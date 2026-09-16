@@ -38,10 +38,10 @@ if xproj.exists():
     patched = re.sub(r'MACOSX_DEPLOYMENT_TARGET\s*=\s*[0-9]+\.[0-9]+;',
                      'MACOSX_DEPLOYMENT_TARGET = 14.0;', src)
     patched = re.sub(r'IPHONEOS_DEPLOYMENT_TARGET\s*=\s*[0-9]+\.[0-9]+;',
-                     'IPHONEOS_DEPLOYMENT_TARGET = 14.0;', patched)
+                     'IPHONEOS_DEPLOYMENT_TARGET = 16.4;', patched)
     if patched != src:
         xproj.write_text(patched)
-        print('[bootstrap] darwin deployment target -> 14.0')
+        print('[bootstrap] darwin deployment target -> macos 14.0 / ios 16.4')
 podfile = pathlib.Path('macos/Podfile')
 if podfile.exists():
     src = podfile.read_text()
@@ -52,13 +52,37 @@ if podfile.exists():
 ios_podfile = pathlib.Path('ios/Podfile')
 if ios_podfile.exists():
     src = ios_podfile.read_text()
-    patched = re.sub(r'^platform :ios, .*', "platform :ios, '14.0'", src, flags=re.M)
+    patched = re.sub(r'^platform :ios, .*', "platform :ios, '16.4'", src, flags=re.M)
     if patched != src:
         ios_podfile.write_text(patched)
-        print('[bootstrap] ios Podfile -> 14.0')
+        print('[bootstrap] ios Podfile -> 16.4')
 PY
 
 echo "[bootstrap] flutter pub get…"
 flutter pub get
+
+# Correctif temporaire : llamadart 0.8.23 déclare le dossier Artifacts/ du
+# companion Apple (qui n'existe pas à l'état normal) comme dépendance de hook.
+# Flutter tente de l'énumérer -> PathNotFoundException et échec du build Apple.
+# Patch du hook installé dans le cache pub : on ne déclare la dépendance que
+# si le dossier existe réellement (comportement main, sans le crash).
+LLAMADART_HOOK="$HOME/.pub-cache/hosted/pub.dev/llamadart-0.8.23/hook/build.dart"
+if [ -f "$LLAMADART_HOOK" ] && grep -q 'output.dependencies.add(artifacts.uri);' "$LLAMADART_HOOK"; then
+  python3 - "$LLAMADART_HOOK" <<'PY'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+patched = s.replace(
+    "    output.dependencies.add(artifacts.uri);",
+    "    if (artifacts.existsSync()) {\n      output.dependencies.add(artifacts.uri);\n    }",
+    1,
+)
+if patched != s:
+    open(p, "w").write(patched)
+    print("[bootstrap] llamadart hook patched (Artifacts déclaré seulement s'il existe)")
+else:
+    print("[bootstrap] llamadart hook déjà patché")
+PY
+fi
 
 echo "[bootstrap] OK — projet prêt dans $APP_DIR"
