@@ -443,7 +443,9 @@ class _ConversationSetupDialogState
         }
       }
     } else {
-      _cloudModel.text = cloud.defaultModel.isNotEmpty ? cloud.defaultModel : 'auto';
+      _cloudModel.text = _cloudProvider?.defaultModel.isNotEmpty == true
+          ? _cloudProvider!.defaultModel
+          : 'auto';
     }
   }
 
