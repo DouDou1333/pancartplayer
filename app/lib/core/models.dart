@@ -181,8 +181,8 @@ class Conversation {
     required this.providerId,
     required this.modelId,
     this.createdAt,
-    this.messages = const [],
-  });
+    List<ChatMessage>? messages,
+  }) : messages = messages ?? <ChatMessage>[];
 
   final String id;
   String title;
