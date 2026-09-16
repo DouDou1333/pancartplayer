@@ -28,12 +28,16 @@ if [ ! -f .metadata ]; then
 fi
 
 # macOS : le plugin llama.cpp (llamadart_llama_cpp_flutter) exige macOS >= 14.0
-# (dans son manifeste Swift Package Manager). flutter create régénère une cible
-# 12.0 -> on remonte le déploiement target du projet Runner.
+# et iOS >= 16.4 (manifeste Swift Package Manager). flutter create régénère des
+# cibles plus basses -> on remonte le déploiement target des projets Runner.
 python3 - <<'PY'
 import re, pathlib
-xproj = pathlib.Path('macos/Runner.xcodeproj/project.pbxproj')
-if xproj.exists():
+for xproj in (
+    pathlib.Path('macos/Runner.xcodeproj/project.pbxproj'),
+    pathlib.Path('ios/Runner.xcodeproj/project.pbxproj'),
+):
+    if not xproj.exists():
+        continue
     src = xproj.read_text()
     patched = re.sub(r'MACOSX_DEPLOYMENT_TARGET\s*=\s*[0-9]+\.[0-9]+;',
                      'MACOSX_DEPLOYMENT_TARGET = 14.0;', src)
@@ -41,7 +45,7 @@ if xproj.exists():
                      'IPHONEOS_DEPLOYMENT_TARGET = 16.4;', patched)
     if patched != src:
         xproj.write_text(patched)
-        print('[bootstrap] darwin deployment target -> macos 14.0 / ios 16.4')
+        print(f'[bootstrap] {xproj} -> macos 14.0 / ios 16.4')
 podfile = pathlib.Path('macos/Podfile')
 if podfile.exists():
     src = podfile.read_text()
