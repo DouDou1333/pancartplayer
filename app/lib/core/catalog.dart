@@ -8,6 +8,10 @@ library;
 
 import 'models.dart';
 
+/// Plafond de RAM (en Mo) pour l'exécution LOCALE sur appareil mobile.
+/// Les modèles plus lourds doivent être servis par le cloud.
+const int kLocalRamLimitMb = 3000;
+
 const List<CatalogModel> kCatalog = [
   // ---- Phoniques (RAM réduite) ----------------------------------------
   CatalogModel(

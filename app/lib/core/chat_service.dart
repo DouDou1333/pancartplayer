@@ -6,6 +6,7 @@ import 'models.dart';
 import 'storage.dart';
 import 'remote_client.dart';
 import 'local_engine.dart';
+import 'catalog.dart';
 
 class ChatService {
   ChatService(this._store);
@@ -37,8 +38,9 @@ class ChatService {
     );
     conv.messages.add(assistant);
 
-    final provider = _store.provider(conv.providerId);
-    if (provider == null) {
+    final storedProvider = _store.provider(conv.providerId);
+    final isLocal = conv.providerId == 'local' || storedProvider?.kind == 'local';
+    if (!isLocal && storedProvider == null) {
       assistant.error = 'Fournisseur introuvable.';
       assistant.isStreaming = false;
       await _store.saveConversation(conv);
@@ -54,7 +56,8 @@ class ChatService {
 
     try {
       final Stream<String> stream;
-      if (provider.kind == 'remote') {
+      if (!isLocal) {
+        final provider = storedProvider!;
         final client = RemoteClient(
           baseUrl: provider.baseUrl,
           apiKey: await _store.readKey(provider.id),
@@ -64,11 +67,21 @@ class ChatService {
           messages: historyMessages,
         );
       } else {
+        final cat = catalogById(conv.modelId);
+        if (cat != null && cat.sizeMb > kLocalRamLimitMb) {
+          assistant.error =
+              'Modèle trop lourd pour le local (${(cat.sizeMb / 1000).toStringAsFixed(1)} Go). '
+              'Passe ce modèle en Cloud (onglet « IA » / badge moteur) pour '
+              '${(cat.sizeMb / 1000).toStringAsFixed(0)}+ Go.';
+          assistant.isStreaming = false;
+          await _store.saveConversation(conv);
+          return conv;
+        }
         final local = _deviceModel(conv.modelId);
         if (local == null || !local.isDownloaded) {
           assistant.error =
-              'Télécharge d\'abord le modèle local (onglet Modèles), puis '
-              'modifie le modèle de la conversation (identifiant catalogue).';
+              'Modèle local introuvable : télécharge-le d\'abord dans '
+              'l\'onglet « Modèles ».';
           assistant.isStreaming = false;
           await _store.saveConversation(conv);
           return conv;
@@ -91,6 +104,9 @@ class ChatService {
     }
     return conv;
   }
+
+  /// Persiste le changement de moteur/modèle d'une conversation existante.
+  Future<void> setEngine(Conversation conv) => _store.saveConversation(conv);
 
   DeviceModel? _deviceModel(String catalogId) {
     for (final d in _store.deviceModels()) {

@@ -56,11 +56,14 @@ Notes honnêtes :
 
 ## Utilisation
 
-1. Onglet **IA** → ajoute un fournisseur (presets rapides disponibles).
+1. Onglet **IA** → ajoute un fournisseur cloud (presets rapides disponibles).
 2. Onglet **Modèles** → télécharge un GGUF adapté à ta RAM
-   (`phone` ≤ ~1,2 Go, `all` ~2-3 Go, `desktop` > 4 Go).
-3. Onglet **Chat** → nouvelle conversation, choisis le fournisseur →
-   modèle. Discussions streamées, historique persistant.
+   (`phone` ≤ ~1,2 Go, `all` ~2-3 Go ; au-delà → cloud).
+3. Onglet **Chat** → nouvelle conversation : choisis **Local** (sur l'appareil)
+   ou **Cloud** (API distante), puis le modèle. Un badge affiche le moteur actif
+   (`⚙ Local · qwen3-4b` ou `☁ Cloud · llama-3.3-70b`) et permet de **basculer
+   local ↔ cloud** sans perdre l'historique. Les modèles > 3 Go sont refusés en
+   local sur un téléphone : bascule en cloud.
 4. Onglet **Ablitération** → génère le script, exécute-le sur un PC
    costaud ou copie le notebook Colab (gratuit), puis importe le résultat.
 
@@ -76,8 +79,9 @@ Voir `tools/ablit/README.md`.
 
 ## Sémantique de version
 
-- **v0.1.0** — MVP : chat, catalogue HF, téléchargement progressif,
-  fournisseurs OpenAI-compatibles, assistant d'ablitération.
+- **v0.1.0** — MVP : chat local/cloud avec badge moteur, catalogue HF,
+  téléchargement progressif, fournisseurs OpenAI-compatibles, garde-fou RAM
+  (modèles lourds → cloud), assistant d'ablitération.
 - **v1.1** — thème clair, import de modèles custom par URL, paramètres
   avancés, export/import des conversations.
 
