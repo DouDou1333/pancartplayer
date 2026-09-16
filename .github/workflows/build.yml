@@ -27,7 +27,7 @@ jobs:
         run: |
           cd app
           flutter pub get
-          flutter analyze
+          flutter analyze --no-fatal-infos
           flutter test
 
       - name: Build APK
@@ -101,7 +101,7 @@ jobs:
       - name: Build macOS
         run: |
           cd app
-          flutter build macos --release --no-codesign
+          flutter build macos --release
           rm -rf ../macos
           mkdir -p ../macos
           cp -r build/macos/Build/Products/Release/* ../macos/

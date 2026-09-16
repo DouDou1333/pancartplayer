@@ -32,7 +32,7 @@ if flutter build linux --release >/dev/null 2>&1; then
   echo "✓ linux/ bundle"
 fi
 
-if flutter build macos --no-codesign --release >/dev/null 2>&1; then
+if flutter build macos --release >/dev/null 2>&1; then
   rm -rf "$ROOT/macos"
   mkdir -p "$ROOT/macos"
   cp -r build/macos/Build/Products/Release/* "$ROOT/macos/"
