@@ -192,6 +192,7 @@ class ModelsController extends ChangeNotifier {
     final destination = p.join(await modelsDir(), model.file);
     final progress = StreamController<double>();
     final done = Completer<void>();
+    var failed = false;
 
     try {
       Dio()
@@ -203,6 +204,7 @@ class ModelsController extends ChangeNotifier {
           .then((_) {
         if (!done.isCompleted) done.complete();
       }).catchError((Object e) {
+        failed = true;
         if (!done.isCompleted) done.completeError(e);
       });
 
@@ -221,12 +223,12 @@ class ModelsController extends ChangeNotifier {
         yield pct;
       }
       await done.future;
-    } on Object catch (e) {
+    } on Object {
       rethrow;
     } finally {
       await progress.close();
       d.isDownloading = false;
-      d.isDownloaded = !done.isCompletedError;
+      d.isDownloaded = !failed;
       d.localPath = destination;
       await _store.saveDeviceModel(d);
       notifyListeners();

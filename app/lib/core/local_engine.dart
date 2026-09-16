@@ -67,7 +67,7 @@ class LocalEngine {
     final chat = <LlamaChatMessage>[];
     for (final m in messages) {
       final text = (m['content'] ?? '').toString();
-      final role = _mapRole(m['role'] ?? 'user');
+      final role = _mapRole((m['role'] ?? 'user').toString());
       chat.add(LlamaChatMessage.fromText(role: role, text: text));
     }
     try {
