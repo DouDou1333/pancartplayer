@@ -1,0 +1,16 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+  exclude:
+    - build/**
+  errors:
+    unused_import: warning
+    deprecated_member_use: info
+
+linter:
+  rules:
+    prefer_const_constructors: true
+    prefer_final_locals: true
+    use_key_in_widget_constructors: true

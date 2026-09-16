@@ -1,0 +1,33 @@
+# Flutter / Dart
+.dart_tool/
+build/
+.metadata
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+app/ios/Pods/
+
+# Livrables (installés via `scripts/build_all.sh` ou les artefacts GitHub Actions)
+android/*
+!android/.gitkeep
+ios/*
+!ios/.gitkeep
+linux/*
+!linux/.gitkeep
+macos/*
+!macos/.gitkeep
+windows/*
+!windows/.gitkeep
+web/*
+!web/.gitkeep
+
+# Python (tools/ablit)
+__pycache__/
+*.pyc
+.venv/
+ablit_work_*/
+
+# Editeurs / OS
+.idea/
+.vscode/
+.DS_Store

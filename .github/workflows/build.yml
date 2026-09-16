@@ -1,0 +1,151 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  android-web:
+    name: Android + Web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Bootstrap
+        run: bash scripts/bootstrap.sh
+
+      - name: Analyze + tests
+        run: |
+          cd app
+          flutter pub get
+          flutter analyze
+          flutter test
+
+      - name: Build APK
+        run: |
+          cd app
+          flutter build apk --release
+          mkdir -p ../android
+          cp build/app/outputs/flutter-apk/app-release.apk ../android/pancartplayer.apk
+
+      - name: Build Web
+        run: |
+          cd app
+          flutter build web --release
+          rm -rf ../web
+          mkdir -p ../web
+          cp -r build/web/* ../web/
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: android/pancartplayer.apk
+
+      - name: Upload Web
+        uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: web/
+
+  linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install deps Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libgtk-3-dev
+      - name: Bootstrap
+        run: bash scripts/bootstrap.sh
+      - name: Build Linux
+        run: |
+          cd app
+          flutter build linux --release
+          rm -rf ../linux
+          mkdir -p ../linux
+          cp -r build/linux/x64/release/bundle/* ../linux/
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: linux/
+
+  macos-ios:
+    name: macOS + iOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Bootstrap
+        run: bash scripts/bootstrap.sh
+      - name: Build macOS
+        run: |
+          cd app
+          flutter build macos --release --no-codesign
+          rm -rf ../macos
+          mkdir -p ../macos
+          cp -r build/macos/Build/Products/Release/* ../macos/
+      - name: Build iOS (non signé)
+        run: |
+          cd app
+          flutter build ios --release --no-codesign
+          rm -rf ../ios
+          mkdir -p ../ios
+          cp -r build/ios/iphoneos/*.app ../ios/
+      - name: Upload macOS
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: macos/
+      - name: Upload iOS
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios
+          path: ios/
+
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Bootstrap
+        shell: bash
+        run: bash scripts/bootstrap.sh
+      - name: Build Windows
+        shell: bash
+        run: |
+          cd app
+          flutter build windows --release
+          rm -rf ../windows
+          mkdir -p ../windows
+          cp -r build/windows/x64/runner/Release/* ../windows/
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: windows/
