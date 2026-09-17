@@ -106,10 +106,11 @@ class CatalogModel {
     }
     if (file.isEmpty) file = clean;
 
-    final base = file.split('/').last.toLowerCase().replaceAll(
-          RegExp(r'[^a-z0-9]+'),
-          '-',
-        );
+    final fileName = file.split('/').last;
+    final base = fileName
+        .toLowerCase()
+        .replaceFirst(RegExp(r'\.gguf$'), '')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-');
 
     return CatalogModel(
       id: 'custom-${base.isEmpty ? 'modele' : base}',
