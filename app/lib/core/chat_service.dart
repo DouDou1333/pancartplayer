@@ -7,6 +7,7 @@ import 'storage.dart';
 import 'remote_client.dart';
 import 'local_engine.dart';
 import 'catalog.dart';
+import 'engine_support.dart';
 
 class ChatService {
   ChatService(this._store);
@@ -67,7 +68,16 @@ class ChatService {
           messages: historyMessages,
         );
       } else {
-        final cat = catalogById(conv.modelId);
+        final reason = localEngineUnsupportedReason();
+        if (reason != null) {
+          assistant.error =
+              'Moteur local indisponible — $reason Tu peux continuer en Cloud.';
+          assistant.isStreaming = false;
+          await _store.saveConversation(conv);
+          return conv;
+        }
+        final customs = _store.customModels();
+        final cat = catalogByIdOrCustom(conv.modelId, customs);
         if (cat != null && cat.sizeMb > kLocalRamLimitMb) {
           assistant.error =
               'Modèle trop lourd pour le local (${(cat.sizeMb / 1000).toStringAsFixed(1)} Go). '
@@ -86,7 +96,16 @@ class ChatService {
           await _store.saveConversation(conv);
           return conv;
         }
-        await LocalEngine.instance.loadModel(local.localPath);
+        try {
+          await LocalEngine.instance.loadModel(local.localPath);
+        } on Object catch (e) {
+          assistant.error = 'Impossible de charger le moteur local '
+              '(modèle incompatible ou système trop ancien). Passe ce chat '
+              'en Cloud via le bandeau « changer local / cloud ». Détail : ${_short(e)}';
+          assistant.isStreaming = false;
+          await _store.saveConversation(conv);
+          return conv;
+        }
         stream = LocalEngine.instance.complete(
           messages: historyMessages,
         );
@@ -113,5 +132,10 @@ class ChatService {
       if (d.catalogId == catalogId) return d;
     }
     return null;
+  }
+
+  static String _short(Object e) {
+    final s = e.toString().trim();
+    return s.length > 160 ? '${s.substring(0, 160)}…' : s;
   }
 }

@@ -19,7 +19,6 @@ dependencies:
   flutter_secure_storage: ^9.2.2
   dio: ^5.7.0
   llamadart: ^0.8.23
-  llamadart_llama_cpp_flutter: ^0.0.18
 
 dev_dependencies:
   flutter_test:

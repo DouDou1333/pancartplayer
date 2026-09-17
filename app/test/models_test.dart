@@ -35,6 +35,23 @@ void main() {
           'https://huggingface.co/unsloth/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf');
     });
 
+    test('CatalogModel.fromHfUrl import URL', () {
+      final m = CatalogModel.fromHfUrl(
+        url:
+            'https://huggingface.co/mradermacher/Ornicrat-9B-GGUF/resolve/main/ornith-9b-uncensored-Q4_K_M.gguf',
+      );
+      expect(m.id, 'custom-ornith-9b-uncensored-q4-k-m');
+      expect(m.owner, 'mradermacher');
+      expect(m.file, 'ornith-9b-uncensored-Q4_K_M.gguf');
+      expect(m.repo, 'https://huggingface.co/mradermacher/Ornicrat-9B-GGUF/resolve/main/ornith-9b-uncensored-Q4_K_M.gguf');
+      expect(m.hfUrl, isFalse);
+      expect(m.downloadUrl(),
+          'https://huggingface.co/mradermacher/Ornicrat-9B-GGUF/resolve/main/ornith-9b-uncensored-Q4_K_M.gguf');
+      final back = CatalogModel.fromJson(m.toJson());
+      expect(back.id, m.id);
+      expect(back.downloadUrl(), m.downloadUrl());
+    });
+
     test('Conversation with messages', () {
       final conv = Conversation(
         id: 'c1',

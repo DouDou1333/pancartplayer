@@ -19,6 +19,7 @@ class AppStore {
   static const _conversations = 'pp/conversations/';
   static const _providers = 'pp/providers/';
   static const _models = 'pp/models/';
+  static const _customModels = 'pp/custom_models/';
   static const _jobs = 'pp/jobs/';
 
   late SharedPreferences _prefs;
@@ -163,6 +164,18 @@ class AppStore {
 
   Future<void> saveDeviceModel(DeviceModel m) =>
       _write(_models, m.catalogId, m.toJson());
+
+  // ---------------------------------------------------------------------
+  // Modèles custom importés par URL Hugging Face
+  // ---------------------------------------------------------------------
+  List<CatalogModel> customModels() =>
+      _list<CatalogModel>(_customModels, (m) => CatalogModel.fromJson(m));
+
+  Future<void> saveCustomModel(CatalogModel m) =>
+      _write(_customModels, m.id, m.toJson());
+
+  Future<void> deleteCustomModel(String id) =>
+      _remove(_customModels, id);
 
   // ---------------------------------------------------------------------
   // Jobs d'ablitération

@@ -134,3 +134,14 @@ CatalogModel? catalogById(String id) {
   }
   return null;
 }
+
+/// Cherche dans le catalogue de base, puis dans une liste de modèles custom
+/// (importés par URL Hugging Face).
+CatalogModel? catalogByIdOrCustom(String id, List<CatalogModel> customs) {
+  final base = catalogById(id);
+  if (base != null) return base;
+  for (final m in customs) {
+    if (m.id == id) return m;
+  }
+  return null;
+}

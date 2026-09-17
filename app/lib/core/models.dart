@@ -78,6 +78,56 @@ class CatalogModel {
       ? 'https://huggingface.co/$repo/resolve/main/$file'
       : repo;
 
+  /// Construit un modèle importé à partir d'une URL Hugging Face (resolve ou
+  /// URL directe d'un fichier .gguf). `repo` stocke alors l'URL complète
+  /// (`hfUrl = false`), et `downloadUrl()` renvoie directement cette URL.
+  factory CatalogModel.fromHfUrl({
+    required String url,
+    String? name,
+    int sizeMb = 0,
+  }) {
+    final clean = url.trim();
+    final uri = Uri.tryParse(clean);
+    final segs = (uri?.pathSegments ?? const <String>[])
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    var owner = '';
+    var file = '';
+    if (clean.toLowerCase().contains('huggingface.co') && segs.length >= 2) {
+      owner = segs[0];
+      if (segs.length >= 4 && segs[2].toLowerCase() == 'resolve') {
+        file = segs.sublist(4).join('/');
+      } else {
+        file = segs.last;
+      }
+    } else {
+      file = segs.isEmpty ? '' : segs.last;
+    }
+    if (file.isEmpty) file = clean;
+
+    final base = file.split('/').last.toLowerCase().replaceAll(
+          RegExp(r'[^a-z0-9]+'),
+          '-',
+        );
+
+    return CatalogModel(
+      id: 'custom-${base.isEmpty ? 'modele' : base}',
+      name: name == null || name.trim().isEmpty
+          ? (file.split('/').last.isEmpty ? 'Modèle importé' : file.split('/').last)
+          : name.trim(),
+      owner: owner,
+      repo: clean,
+      file: file,
+      params: 'importé',
+      quant: '?',
+      sizeMb: sizeMb,
+      recommendedFor: 'all',
+      tags: const ['importé', 'custom'],
+      hfUrl: false,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,

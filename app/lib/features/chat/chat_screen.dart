@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_providers.dart';
 import '../../core/catalog.dart';
 import '../../core/chat_service.dart';
+import '../../core/engine_support.dart';
 import '../../core/models.dart';
 import '../../widgets/message_bubble.dart';
 
@@ -204,10 +205,11 @@ class _EngineBar extends ConsumerWidget {
     final isLocal = conv.providerId == 'local' || provider?.kind == 'local';
     String label;
     if (isLocal) {
-      final cat = catalogById(conv.modelId);
+      final cat = models.catalogFor(conv.modelId) ?? catalogById(conv.modelId);
       label = 'Local · ${cat?.name ?? conv.modelId}';
       final dev = models.stateFor(conv.modelId);
       if (dev?.isDownloaded == true) label = '$label · sur appareil';
+      if (localEngineUnsupportedReason() != null) label = '$label · moteur indisponible';
     } else if (provider == null) {
       label = 'Fournisseur introuvable — ${conv.modelId}';
     } else {
@@ -457,7 +459,7 @@ class _ConversationSetupDialogState
 
   List<({CatalogModel model, DeviceModel? dev})> _localCandidates() {
     final models = ref.read(modelsProvider);
-    return kCatalog
+    return models.allCatalog
         .where((m) => m.sizeMb <= kLocalRamLimitMb)
         .map((m) => (model: m, dev: models.stateFor(m.id)))
         .toList();
@@ -563,9 +565,33 @@ class _ConversationSetupDialogState
 
   Widget _buildLocal(BuildContext context) {
     final candidates = _localCandidates();
+    final unsupported = localEngineUnsupportedReason();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (unsupported != null) ...[
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0x33FFB04A),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.warning_amber, color: Color(0xFFFFB04A), size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    unsupported,
+                    style: const TextStyle(color: Color(0xFFFFD9A0), fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const Text(
           'Modèles compatibles avec la RAM du téléphone · exécutés sur place.',
           style: TextStyle(color: Colors.white54, fontSize: 12),

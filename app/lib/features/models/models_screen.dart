@@ -50,15 +50,16 @@ class _ModelsScreenState extends ConsumerState<ModelsScreen> {
   @override
   Widget build(BuildContext context) {
     final models = ref.watch(modelsProvider);
+    final custom = models.custom;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Modèles locaux'),
         actions: [
           IconButton(
-            tooltip: 'Rechercher sur Hugging Face',
+            tooltip: 'Importer depuis Hugging Face',
             icon: const Icon(Icons.cloud_download_outlined),
-            onPressed: () => _openHub(),
+            onPressed: _importFromHf,
           ),
         ],
       ),
@@ -92,22 +93,120 @@ class _ModelsScreenState extends ConsumerState<ModelsScreen> {
                     downloading: _downloading[m.id] ?? false,
                     onDownload: () => _start(m),
                   )),
+          if (custom.isNotEmpty) ...[
+            const _SectionLabel('Modèles importés (URL Hugging Face)'),
+            ...custom.map((m) => _ModelTile(
+                  model: m,
+                  device: models.stateFor(m.id),
+                  downloading: _downloading[m.id] ?? false,
+                  onDownload: () => _start(m),
+                  onDelete: () => _removeCustom(m.id),
+                )),
+          ],
           const SizedBox(height: 16),
         ],
       ),
     );
   }
 
-  void _openHub() {
-    // Ouvre l'annuaire GGUF : l'utilisateur peut coller un identifiant
-    // custom grace à une future importation URL.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Pour un modèle custom : fournissez l\'URL directe du GGUF (import URL à venir).',
+  Future<void> _removeCustom(String id) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer ce modèle importé ?'),
+        content: const Text(
+          'La fiche est retirée (le fichier déjà téléchargé reste sur l\'appareil).',
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Supprimer'),
+          ),
+        ],
       ),
     );
+    if (ok == true && mounted) {
+      await ref.read(modelsProvider).removeCustom(id);
+    }
+  }
+
+  Future<void> _importFromHf() async {
+    if (kIsWeb) {
+      _snack('Import local indisponible sur le web — utilise un fournisseur '
+          'distant (onglet « IA »).');
+      return;
+    }
+    final controller = TextEditingController();
+    final url = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Importer un modèle Hugging Face'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Colle l\'URL directe d\'un fichier .gguf :\n'
+              'https://huggingface.co/<org>/<repo>/resolve/main/<fichier>.gguf',
+              style: TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: TextInputType.url,
+              decoration: const InputDecoration(
+                labelText: 'URL du GGUF',
+                hintText: 'https://huggingface.co/…/resolve/main/….gguf',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final v = controller.text.trim();
+              if (v.isEmpty) return;
+              Navigator.pop(ctx, v);
+            },
+            child: const Text('Importer'),
+          ),
+        ],
+      ),
+    );
+    if (url != null && mounted) {
+      await _addCustom(url);
+    }
+  }
+
+  Future<void> _addCustom(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
+        !url.toLowerCase().endsWith('.gguf')) {
+      _snack('URL invalide : attends une URL …/…gguf (http/https).');
+      return;
+    }
+    final model = CatalogModel.fromHfUrl(url: url);
+    final models = ref.read(modelsProvider);
+    await models.addCustom(model);
+    _snack('Modèle « ${model.name} » importé — touche « Télécharger » pour le '
+        'récupérer sur l\'appareil.');
+  }
+
+  void _snack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(msg)));
   }
 }
 
@@ -136,12 +235,14 @@ class _ModelTile extends StatelessWidget {
     required this.device,
     required this.downloading,
     required this.onDownload,
+    this.onDelete,
   });
 
   final CatalogModel model;
   final DeviceModel? device;
   final bool downloading;
   final VoidCallback onDownload;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -168,6 +269,12 @@ class _ModelTile extends StatelessWidget {
                   const Icon(Icons.check_circle, color: Color(0xFF5BD27B), size: 18),
                 if (downloading)
                   const Icon(Icons.downloading, color: Color(0xFF9A8CFF), size: 18),
+                if (onDelete != null)
+                  IconButton(
+                    tooltip: 'Supprimer ce modèle importé',
+                    icon: const Icon(Icons.delete_outline, color: Colors.white38, size: 18),
+                    onPressed: onDelete,
+                  ),
               ],
             ),
             const SizedBox(height: 4),

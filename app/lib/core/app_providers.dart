@@ -159,16 +159,45 @@ class ModelsController extends ChangeNotifier {
 
   final AppStore _store;
   List<DeviceModel> _device = [];
+  List<CatalogModel> _custom = [];
 
   List<DeviceModel> get device => _device;
 
+  List<CatalogModel> get custom => _custom;
+
+  /// Catalogue complet : modèles embarqués + modèles importés.
+  List<CatalogModel> get allCatalog => <CatalogModel>[...kCatalog, ..._custom];
+
+  /// Résout un modèle (catalogue embarqué ou importé) par son id.
+  CatalogModel? catalogFor(String id) => catalogByIdOrCustom(id, _custom);
+
+  /// Résout un modèle importé par le nom de fichier (résultat d'ablitération).
+  CatalogModel? catalogForFile(String file) {
+    for (final m in _custom) {
+      if (m.file == file || m.name == file) return m;
+    }
+    return null;
+  }
+
   void reload() {
+    _custom = _store.customModels();
     final list = _store.deviceModels();
     for (final d in list) {
-      d.catalog = catalogById(d.catalogId);
+      d.catalog = catalogByIdOrCustom(d.catalogId, _custom);
     }
     _device = list;
     notifyListeners();
+  }
+
+  /// Ajoute un modèle importé (URL Hugging Face) puis le recharger.
+  Future<void> addCustom(CatalogModel model) async {
+    await _store.saveCustomModel(model);
+    reload();
+  }
+
+  Future<void> removeCustom(String id) async {
+    await _store.deleteCustomModel(id);
+    reload();
   }
 
   DeviceModel? stateFor(String catalogId) {
@@ -238,7 +267,7 @@ class ModelsController extends ChangeNotifier {
   /// Marque un modèle comme importé depuis un chemin local (ex: resultat
   /// d'une abliteration déposée sur l'appareil).
   Future<bool> importPath(String targetFile, String localPath) async {
-    final model = catalogById(targetFile);
+    final model = catalogById(targetFile) ?? catalogForFile(targetFile);
     if (model == null) return false;
     final d = stateFor(model.id) ?? DeviceModel(catalogId: model.id);
     d.isDownloaded = true;
