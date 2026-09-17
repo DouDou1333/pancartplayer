@@ -21,7 +21,8 @@ void main() {
 
     test('DioException connection -> fournisseur injoignable', () {
       final msg = friendlyErrorString(
-        'DioException [connectionError]: SocketException: connection failed',
+        'DioException [connection error]: failed to connect to '
+        'https://api.exemple.com:443',
       );
       expect(msg, contains('vérifie l\'URL'));
     });
