@@ -2,6 +2,8 @@
 /// (local ou distant) et stocke l'historique dans la conversation.
 library;
 
+import 'dart:io' show SocketException;
+
 import 'models.dart';
 import 'storage.dart';
 import 'remote_client.dart';
@@ -116,7 +118,7 @@ class ChatService {
         onTick?.call();
       }
     } on Object catch (e) {
-      assistant.error = 'Erreur : $e';
+      assistant.error = _friendlyError(e);
     } finally {
       assistant.isStreaming = false;
       await _store.saveConversation(conv);
@@ -137,5 +139,26 @@ class ChatService {
   static String _short(Object e) {
     final s = e.toString().trim();
     return s.length > 160 ? '${s.substring(0, 160)}…' : s;
+  }
+
+  /// Transforme une erreur de transport en message amical en français.
+  static String _friendlyError(Object e) {
+    final s = e.toString();
+    final short = _short(e);
+    if (e is SocketException) {
+      return 'Connexion impossible (réseau refusé par le système ou fournisseur '
+          'éteint — pour Ollama local : lance « ollama serve » ; sinon vérifie '
+          'le Wi-Fi et l\'URL). Détail : $short';
+    }
+    if (s.contains('Operation not permitted') || s.contains('SocketException')) {
+      return 'Réseau bloqué (sandbox macOS : autorisation « réseau client » '
+          'absente). Récupère la dernière version de l\'app, ou utilise le '
+          'Cloud (onglet « IA »). Détail : $short';
+    }
+    if (s.contains('DioException') && s.toLowerCase().contains('connection')) {
+      return 'Connexion impossible au fournisseur — vérifie l\'URL/la clé et '
+          'le réseau. Détail : $short';
+    }
+    return 'Erreur : $short';
   }
 }

@@ -63,6 +63,44 @@ if ios_podfile.exists():
         print('[bootstrap] ios Podfile -> 16.4')
 PY
 
+# macOS : le template Flutter active le sandbox SANS com.apple.security.network.client
+# -> toute connexion sortante (API distantes, Ollama sur localhost:11434) échoue en
+# « SocketException: Operation not permitted (errno=1) ». On ajoute l'autorisation
+# réseau client aux deux entitlements (DebugProfile + Release). Idempotent.
+python3 - <<'PY'
+import pathlib
+
+def ensure(rel: str, keys_and_bools: list[tuple[str, bool]]):
+    p = pathlib.Path(rel)
+    text = p.read_text() if p.exists() else ''
+    additions = ''
+    for key, val in keys_and_bools:
+        if key not in text:
+            additions += (f'\t<key>{key}</key>\n\t<{"true" if val else "false"}/>\n')
+    if not additions:
+        print(f'[bootstrap] {rel} : entitlements déjà à jour')
+        return
+    if 'dict>' not in text:
+        text = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
+                '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
+                '<plist version="1.0">\n<dict>\n</dict>\n</plist>\n')
+    head, tail = text.split('</dict>', 1)
+    p.write_text(head + additions + '</dict>' + tail)
+    print(f'[bootstrap] {rel} : + network.client (sandbox macOS autorise le réseau)')
+
+ensure('macos/Runner/DebugProfile.entitlements', [
+    ('com.apple.security.app-sandbox', True),
+    ('com.apple.security.cs.allow-jit', True),
+    ('com.apple.security.network.server', True),
+    ('com.apple.security.network.client', True),
+])
+ensure('macos/Runner/Release.entitlements', [
+    ('com.apple.security.app-sandbox', True),
+    ('com.apple.security.network.client', True),
+])
+PY
+
 echo "[bootstrap] flutter pub get…"
 flutter pub get
 
