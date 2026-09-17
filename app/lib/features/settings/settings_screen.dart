@@ -99,22 +99,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           _SectionTitle('Température par défaut'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Slider(
-              value: store.getDouble('temperature', 0.7),
-              min: 0,
-              max: 2.0,
-              divisions: 20,
-              label: store.getDouble('temperature', 0.7).toStringAsFixed(1),
-              onChanged: (v) async {
-                await store.setDouble('temperature', v);
-                if (context.mounted) {
-                  (context as Element).markNeedsBuild();
-                }
-              },
-            ),
-          ),
+          const _TemperatureSlider(),
 
           const _SectionTitle('À venir'),
           ListTile(
@@ -122,14 +107,45 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Thème clair'),
             subtitle: const Text('Version 1.1'),
           ),
-          ListTile(
-            leading: const Icon(Icons.construction),
-            title: const Text('Import modèles custom (URL HF)'),
-            subtitle: const Text('Version 1.1'),
-          ),
 
           const SizedBox(height: 24),
         ],
+      ),
+    );
+  }
+}
+
+/// Curseur de température persistant (rebuild local propre, sans hack).
+class _TemperatureSlider extends ConsumerStatefulWidget {
+  const _TemperatureSlider();
+
+  @override
+  ConsumerState<_TemperatureSlider> createState() => _TemperatureSliderState();
+}
+
+class _TemperatureSliderState extends ConsumerState<_TemperatureSlider> {
+  late double _value;
+
+  @override
+  void initState() {
+    super.initState();
+    _value = ref.read(appStoreProvider).getDouble('temperature', 0.7);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Slider(
+        value: _value,
+        min: 0,
+        max: 2.0,
+        divisions: 20,
+        label: _value.toStringAsFixed(1),
+        onChanged: (v) async {
+          setState(() => _value = v);
+          await ref.read(appStoreProvider).setDouble('temperature', v);
+        },
       ),
     );
   }

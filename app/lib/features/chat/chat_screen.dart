@@ -81,6 +81,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ..showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  Future<void> _openConversation(Conversation c) async {
+    setState(() => _working = null);
+    ref.read(chatsProvider).select(c.id);
+    if (!mounted) return;
+    Navigator.pop(context); // ferme le tiroir
+    _scrollToBottom();
+  }
+
+  Future<void> _renameConversation(Conversation c) async {
+    final ctrl = TextEditingController(text: c.title);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Renommer la conversation'),
+        content: TextField(controller: ctrl, autofocus: true),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('Valider'),
+          ),
+        ],
+      ),
+    );
+    if (result != null && result.isNotEmpty) {
+      c.title = result;
+      await ref.read(appStoreProvider).saveConversation(c);
+      ref.read(chatsProvider).push(c);
+    }
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scroll.hasClients) {
@@ -125,6 +159,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final conv = _working ?? chats.selected;
 
     return Scaffold(
+      drawer: _ConversationDrawer(
+        onNew: _newConversation,
+        onOpen: _openConversation,
+        onRename: _renameConversation,
+      ),
       appBar: AppBar(
         title: Row(
           children: [
@@ -181,6 +220,123 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             onSend: _send,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Tiroir de sélection des conversations (historique persistant accessible).
+class _ConversationDrawer extends ConsumerWidget {
+  const _ConversationDrawer({
+    required this.onNew,
+    required this.onOpen,
+    required this.onRename,
+  });
+
+  final VoidCallback onNew;
+  final ValueChanged<Conversation> onOpen;
+  final ValueChanged<Conversation> onRename;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final chats = ref.watch(chatsProvider);
+    final selected = chats.selected;
+
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Conversations',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Text(
+                    '${chats.items.length}',
+                    style: const TextStyle(color: Colors.white38),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: chats.items.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'Aucune conversation.',
+                        style: TextStyle(color: Colors.white38),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: chats.items.length,
+                      itemBuilder: (context, i) {
+                        final c = chats.items[i];
+                        final isSel = selected?.id == c.id;
+                        return ListTile(
+                          dense: true,
+                          selected: isSel,
+                          selectedTileColor: const Color(0x266C4DF6),
+                          leading: Icon(
+                            c.providerId == 'local'
+                                ? Icons.phone_android
+                                : Icons.cloud_outlined,
+                            size: 18,
+                            color: isSel
+                                ? const Color(0xFF9A8CFF)
+                                : Colors.white38,
+                          ),
+                          title: Text(
+                            c.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: c.messages.isEmpty
+                              ? null
+                              : Text(
+                                  c.preview(),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                          trailing: PopupMenuButton<String>(
+                            onSelected: (v) {
+                              if (v == 'rename') {
+                                onRename(c);
+                              } else if (v == 'delete') {
+                                ref.read(chatsProvider).delete(c.id);
+                              }
+                            },
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(
+                                value: 'rename',
+                                child: Text('Renommer'),
+                              ),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Supprimer'),
+                              ),
+                            ],
+                          ),
+                          onTap: () => onOpen(c),
+                        );
+                      },
+                    ),
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: FilledButton.icon(
+                onPressed: onNew,
+                icon: const Icon(Icons.add),
+                label: const Text('Nouvelle conversation'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

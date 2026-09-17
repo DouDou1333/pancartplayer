@@ -129,6 +129,29 @@ class CatalogModel {
     );
   }
 
+  /// Modèle issu d'un fichier GGUF placé sur l'appareil (ex: résultat
+  /// d'une ablitération). `downloadUrl()` renvoie `repo` mais le modèle est
+  /// toujours obtenu via son chemin local.
+  factory CatalogModel.fromFilePath(String fileName, {int sizeMb = 0}) {
+    final base = fileName
+        .toLowerCase()
+        .replaceFirst(RegExp(r'\.gguf$'), '')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+    return CatalogModel(
+      id: 'custom-${base.isEmpty ? 'fichier' : base}',
+      name: fileName,
+      owner: 'local',
+      repo: 'import local',
+      file: fileName,
+      params: 'importé',
+      quant: '?',
+      sizeMb: sizeMb,
+      recommendedFor: 'all',
+      tags: const ['importé', 'fichier'],
+      hfUrl: false,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,

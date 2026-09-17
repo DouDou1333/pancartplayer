@@ -1,3 +1,4 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,6 +58,11 @@ class _ModelsScreenState extends ConsumerState<ModelsScreen> {
         title: const Text('Modèles locaux'),
         actions: [
           IconButton(
+            tooltip: 'Importer un fichier GGUF de l\'appareil',
+            icon: const Icon(Icons.folder_open),
+            onPressed: _importLocalFile,
+          ),
+          IconButton(
             tooltip: 'Importer depuis Hugging Face',
             icon: const Icon(Icons.cloud_download_outlined),
             onPressed: _importFromHf,
@@ -108,6 +114,34 @@ class _ModelsScreenState extends ConsumerState<ModelsScreen> {
       ),
     );
   }
+
+  Future<void> _importLocalFile() async {
+    if (kIsWeb) {
+      _snack('Import de fichier local indisponible sur le web — utilise '
+          'l\'import par URL Hugging Face.');
+      return;
+    }
+    const typeGroup = XTypeGroup(
+      label: 'GGUF',
+      extensions: ['gguf'],
+    );
+    String? path;
+    try {
+      final file = await openFile(acceptedTypeGroups: const [typeGroup]);
+      path = file?.path;
+    } catch (e) {
+      _snack('Sélecteur de fichier indisponible : $e');
+      return;
+    }
+    if (path == null || path.isEmpty) return;
+    final name = _baseName(path);
+    final ok = await ref.read(modelsProvider).importPath(name, path);
+    _snack(ok
+        ? '« $name » importé comme modèle local — prêt dans le chat.'
+        : 'Import impossible pour « $name ».');
+  }
+
+  static String _baseName(String p) => p.split(RegExp(r'[/\\]')).last;
 
   Future<void> _removeCustom(String id) async {
     final ok = await showDialog<bool>(

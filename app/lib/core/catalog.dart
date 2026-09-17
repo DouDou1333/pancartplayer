@@ -10,7 +10,8 @@ import 'models.dart';
 
 /// Plafond de RAM (en Mo) pour l'exécution LOCALE sur appareil mobile.
 /// Les modèles plus lourds doivent être servis par le cloud.
-const int kLocalRamLimitMb = 3000;
+/// 3200 Mo couvre gemma-3-4b (3020 Mo) mais exclut les ~5 Go (Ornith-9B…).
+const int kLocalRamLimitMb = 3200;
 
 const List<CatalogModel> kCatalog = [
   // ---- Phoniques (RAM réduite) ----------------------------------------

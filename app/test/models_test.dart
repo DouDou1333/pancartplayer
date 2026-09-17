@@ -52,6 +52,19 @@ void main() {
       expect(back.downloadUrl(), m.downloadUrl());
     });
 
+    test('CatalogModel.fromFilePath import fichier', () {
+      final m = CatalogModel.fromFilePath('Mon-Resultat-Q4_K_M.gguf');
+      expect(m.id, 'custom-mon-resultat-q4-k-m');
+      expect(m.id.startsWith('custom-'), isTrue);
+      expect(m.repo, 'import local');
+      expect(m.hfUrl, isFalse);
+      final back = CatalogModel.fromJson(m.toJson());
+      expect(back.id, m.id);
+      expect(back.downloadUrl(), m.downloadUrl());
+      final weird = CatalogModel.fromFilePath('../../../tmp/foo bar.bin');
+      expect(weird.id, isNotEmpty);
+    });
+
     test('Conversation with messages', () {
       final conv = Conversation(
         id: 'c1',

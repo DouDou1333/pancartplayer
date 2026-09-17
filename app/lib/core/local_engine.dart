@@ -73,7 +73,7 @@ class LocalEngine {
     try {
       return engine.create(
         chat,
-        params: GenerationParams(maxTokens: maxTokens),
+        params: GenerationParams(maxTokens: maxTokens, temp: temperature),
       ).map((chunk) => chunk.choices.first.delta.content ?? '');
     } on Object catch (e) {
       return Stream.error(LocalEngineException('Échec de génération ($e).'));

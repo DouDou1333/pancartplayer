@@ -87,17 +87,19 @@ def ensure(rel: str, keys_and_bools: list[tuple[str, bool]]):
                 '<plist version="1.0">\n<dict>\n</dict>\n</plist>\n')
     head, tail = text.split('</dict>', 1)
     p.write_text(head + additions + '</dict>' + tail)
-    print(f'[bootstrap] {rel} : + network.client (sandbox macOS autorise le réseau)')
+    print(f'[bootstrap] {rel} : + entitlements réseau/fichiers (sandbox macOS)')
 
 ensure('macos/Runner/DebugProfile.entitlements', [
     ('com.apple.security.app-sandbox', True),
     ('com.apple.security.cs.allow-jit', True),
     ('com.apple.security.network.server', True),
     ('com.apple.security.network.client', True),
+    ('com.apple.security.files.user-selected.read-only', True),
 ])
 ensure('macos/Runner/Release.entitlements', [
     ('com.apple.security.app-sandbox', True),
     ('com.apple.security.network.client', True),
+    ('com.apple.security.files.user-selected.read-only', True),
 ])
 PY
 
@@ -108,21 +110,65 @@ PY
 python3 - <<'PY'
 import pathlib, re
 MANIFEST = pathlib.Path('android/app/src/main/AndroidManifest.xml')
-if MANIFEST.exists():
-    src = MANIFEST.read_text()
-    if 'android.permission.INTERNET' not in src:
-        marker = '<application'
-        add = ('<uses-permission android:name="android.permission.INTERNET" />\n'
-               '    <application')
-        if marker in src:
-            MANIFEST.write_text(src.replace(marker, add, 1))
-            print('[bootstrap] android main manifest : + android.permission.INTERNET')
-        else:
-            print('[bootstrap] manifest Android : nœud <application> introuvable (vu tel quel)')
-    else:
-        print('[bootstrap] android main manifest : INTERNET déjà présent')
-else:
+if not MANIFEST.exists():
     print('[bootstrap] manifest Android absent (plateforme non générée — ignoré)')
+else:
+    src = MANIFEST.read_text()
+    added = []
+    if 'android.permission.INTERNET' not in src:
+        added.append('INTERNET')
+    if 'usesCleartextTraffic' not in src:
+        added.append('usesCleartextTraffic')
+    if 'android.permission.INTERNET' not in src:
+        src = src.replace(
+            '<application',
+            '<uses-permission android:name="android.permission.INTERNET" />\n    <application',
+            1)
+    if 'usesCleartextTraffic' not in src:
+        src = re.sub(
+            r'(<application\b[^>]*?)(\s*/?>)',
+            lambda mo: mo.group(1) + ' android:usesCleartextTraffic="true"' + mo.group(2),
+            src, count=1)
+    if added:
+        MANIFEST.write_text(src)
+        print('[bootstrap] android main manifest : + ' + ', '.join(added))
+    else:
+        print('[bootstrap] android main manifest : déjà à jour')
+PY
+
+# iOS : NSLocalNetworkUsageDescription (permission « réseau local » depuis
+# iOS 14) + exception ATS « local networking » pour autoriser le http:// LAN
+# (ex: joindre un Ollama sur le PC depuis l'iPhone/iPad). Idempotent.
+python3 - <<'PY'
+import pathlib
+plist = pathlib.Path('ios/Runner/Info.plist')
+if not plist.exists():
+    print('[bootstrap] ios Info.plist absent (plateforme non générée — ignoré)')
+else:
+    s = plist.read_text()
+    added = []
+    if 'NSLocalNetworkUsageDescription' not in s and '</dict>' in s:
+        s = s.replace(
+            '</dict>',
+            '\t<key>NSLocalNetworkUsageDescription</key>\n'
+            '\t<string>Connexion aux serveurs d\'IA de votre réseau local (ex: Ollama).</string>\n'
+            '</dict>', 1)
+        added.append('NSLocalNetworkUsageDescription')
+    if 'NSAppTransportSecurity' not in s and '</dict>' in s:
+        s = s.replace(
+            '</dict>',
+            '\t<key>NSAppTransportSecurity</key>\n'
+            '\t<dict>\n'
+            '\t\t<key>NSAllowsLocalNetworking</key>\n'
+            '\t\t<true/>\n'
+            '\t</dict>\n'
+            '</dict>', 1)
+        added.append('ATS local networking')
+    if added:
+        plist.write_text(s)
+        print('[bootstrap] ios Info.plist : + ' + ', '.join(added))
+    else:
+        print('[bootstrap] ios Info.plist : déjà à jour')
 PY
 
 echo "[bootstrap] flutter pub get…"

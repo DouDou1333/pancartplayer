@@ -80,27 +80,28 @@ class RemoteClient {
           'max_tokens': maxTokens,
           'stream': true,
         }),
-        options: Options(responseType: ResponseType.stream),
+        options: Options(
+          responseType: ResponseType.stream,
+          headers: {'Accept': 'text/event-stream'},
+        ),
       );
+      final decoder = SseDecoder();
       await for (final chunk in response.data!.stream) {
-        final raw = utf8.decode(chunk);
-        for (final line in raw.split('\n')) {
-          if (!line.startsWith('data: ')) continue;
-          final json = line.substring(6).trim();
-          if (json == '[DONE]') return;
+        for (final payload in decoder.add(chunk)) {
           try {
-            final m = jsonDecode(json) as Map<String, dynamic>;
+            final m = jsonDecode(payload) as Map<String, dynamic>;
             final choices = m['choices'] as List? ?? const [];
             if (choices.isNotEmpty) {
-              final delta = choices.first['delta'];
-              if (delta != null && delta['content'] != null) {
+              final delta = (choices.first as Map)['delta'];
+              if (delta is Map && delta['content'] != null) {
                 yield delta['content'] as String;
               }
             }
           } catch (_) {
-            // chunk mal formé → ignoré
+            // payload JSON malformé → ignoré (le flux continue)
           }
         }
+        if (decoder.isComplete) return;
       }
     } on DioException catch (_) {
       // Fallback non-stream (web notamment)
@@ -112,5 +113,42 @@ class RemoteClient {
       );
       yield fallback;
     }
+  }
+}
+
+/// Décodeur SSE robuste : tamponne les chunks réseau, découpe aux fins de
+/// ligne et renvoie les payloads `data:` (événements `[DONE]` exclus).
+///
+/// Sans ce tampon, un événement scindé entre deux paquets TCP (fréquent sur
+/// mobile) serait perdu ou corrompu, et un caractère UTF-8 multi-octets coupé
+/// ferait lever une erreur de décodage qui interromprait le chat.
+class SseDecoder {
+  final Utf8Decoder _utf8 = const Utf8Decoder(allowMalformed: true);
+  String _pending = '';
+  bool _complete = false;
+
+  bool get isComplete => _complete;
+
+  /// Ajoute un chunk de bytes bruts ; renvoie les payloads `data:` terminés.
+  List<String> add(List<int> chunk) {
+    if (_complete) return const [];
+    _pending += _utf8.convert(chunk);
+    final events = <String>[];
+    while (true) {
+      final nl = _pending.indexOf('\n');
+      if (nl < 0) break; // ligne incomplète → attendre le chunk suivant
+      final line = _pending.substring(0, nl);
+      _pending = _pending.substring(nl + 1);
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+      if (!trimmed.startsWith('data:')) continue;
+      final payload = trimmed.substring(5).trimLeft();
+      if (payload == '[DONE]') {
+        _complete = true;
+      } else {
+        events.add(payload);
+      }
+    }
+    return events;
   }
 }

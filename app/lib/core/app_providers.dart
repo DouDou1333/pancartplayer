@@ -265,10 +265,14 @@ class ModelsController extends ChangeNotifier {
   }
 
   /// Marque un modèle comme importé depuis un chemin local (ex: resultat
-  /// d'une abliteration déposée sur l'appareil).
+  /// d'une abliteration déposée sur l'appareil). Si le nom ne correspond à
+  /// aucun modèle connu, on crée un modèle custom « fichier ».
   Future<bool> importPath(String targetFile, String localPath) async {
-    final model = catalogById(targetFile) ?? catalogForFile(targetFile);
-    if (model == null) return false;
+    var model = catalogById(targetFile) ?? catalogForFile(targetFile);
+    if (model == null) {
+      model = CatalogModel.fromFilePath(targetFile.split('/').last);
+      await _store.saveCustomModel(model);
+    }
     final d = stateFor(model.id) ?? DeviceModel(catalogId: model.id);
     d.isDownloaded = true;
     d.isDownloading = false;
