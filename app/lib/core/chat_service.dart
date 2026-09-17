@@ -4,12 +4,16 @@ library;
 
 import 'dart:io' show SocketException;
 
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
+
 import 'models.dart';
 import 'storage.dart';
 import 'remote_client.dart';
 import 'local_engine.dart';
 import 'catalog.dart';
 import 'engine_support.dart';
+import 'ollama_detector.dart';
 
 class ChatService {
   ChatService(this._store);
@@ -118,7 +122,7 @@ class ChatService {
         onTick?.call();
       }
     } on Object catch (e) {
-      assistant.error = _friendlyError(e);
+      assistant.error = await _errorMessage(e, storedProvider);
     } finally {
       assistant.isStreaming = false;
       await _store.saveConversation(conv);
@@ -151,14 +155,49 @@ class ChatService {
           'le Wi-Fi et l\'URL). Détail : $short';
     }
     if (s.contains('Operation not permitted') || s.contains('SocketException')) {
-      return 'Réseau bloqué (sandbox macOS : autorisation « réseau client » '
-          'absente). Récupère la dernière version de l\'app, ou utilise le '
-          'Cloud (onglet « IA »). Détail : $short';
+      return 'Réseau bloqué (autorisation réseau absente — récupère la '
+          'dernière version de l\'app), ou fournisseur éteint. Déjà à jour ? '
+          'Vérifie que le Wi-Fi est actif et que le fournisseur répond. '
+          'Détail : $short';
     }
     if (s.contains('DioException') && s.toLowerCase().contains('connection')) {
       return 'Connexion impossible au fournisseur — vérifie l\'URL/la clé et '
           'le réseau. Détail : $short';
     }
     return 'Erreur : $short';
+  }
+
+  /// Message d'erreur final. Sur Android, si un fournisseur pointe vers
+  /// localhost (IP du téléphone, pas du PC), essaie de l'auto-réparer.
+  Future<String> _errorMessage(Object e, AiProvider? provider) async {
+    final short = _short(e);
+    final isConnectionError = e is SocketException ||
+        (e.toString().contains('DioException') &&
+            e.toString().toLowerCase().contains('connection'));
+
+    if (isConnectionError &&
+        provider != null &&
+        _isLocalhostUrl(provider.baseUrl) &&
+        !kIsWeb &&
+        defaultTargetPlatform == TargetPlatform.android) {
+      final found = await detectOllamaUrl();
+      if (found != null) {
+        provider.baseUrl = found;
+        await _store.saveProvider(provider);
+        return 'Ollama détecté automatiquement sur le réseau : fournisseur '
+            '« ${provider.name} » configuré sur $found. Renvoie ton message.';
+      }
+      return 'Aucun serveur Ollama trouvé sur ce réseau. Vérifie que le PC '
+          'et le téléphone sont sur le même Wi-Fi et qu\'Ollama écoute '
+          '(OLLAMA_HOST=0.0.0.0:11434). Détail : $short';
+    }
+
+    return _friendlyError(e);
+  }
+
+  static bool _isLocalhostUrl(String s) {
+    final u = Uri.tryParse(s);
+    final host = u?.host.isEmpty == false ? u!.host : s.toLowerCase();
+    return host == 'localhost' || host == '127.0.0.1' || host == '[::1]';
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_providers.dart';
 import '../../core/models.dart';
+import '../../core/ollama_detector.dart';
 
 class ProvidersScreen extends ConsumerStatefulWidget {
   const ProvidersScreen({super.key});
@@ -161,6 +162,7 @@ class _ProviderDialogState extends ConsumerState<_ProviderDialog> {
   late final TextEditingController _key;
   late final TextEditingController _model;
   bool _isLocal = false;
+  bool _scanning = false;
 
   @override
   void initState() {
@@ -190,6 +192,28 @@ class _ProviderDialogState extends ConsumerState<_ProviderDialog> {
       _model.text = preset.defaultModel;
       _isLocal = false;
     });
+  }
+
+  Future<void> _scanOllama() async {
+    setState(() => _scanning = true);
+    try {
+      final found = await detectOllamaUrl(timeout: const Duration(seconds: 8));
+      if (!mounted) return;
+      if (found != null) {
+        setState(() => _baseUrl.text = found);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Aucun serveur Ollama trouvé : PC et téléphone sur le même '
+              'Wi-Fi ? Ollama lancé (OLLAMA_HOST=0.0.0.0:11434) ?',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _scanning = false);
+    }
   }
 
   Future<void> _save() async {
@@ -253,6 +277,31 @@ class _ProviderDialogState extends ConsumerState<_ProviderDialog> {
                 decoration: const InputDecoration(
                   labelText: 'URL de base',
                   hintText: 'https://api.openai.com',
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: _scanning
+                      ? const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            SizedBox(width: 8),
+                            Text('Recherche d\'Ollama sur le Wi-Fi…',
+                                style: TextStyle(color: Colors.white54, fontSize: 12)),
+                          ],
+                        )
+                      : TextButton.icon(
+                          onPressed: _scanOllama,
+                          icon: const Icon(Icons.wifi_tethering, size: 16),
+                          label: const Text('Chercher automatiquement (Ollama)'),
+                        ),
                 ),
               ),
               TextField(

@@ -101,6 +101,30 @@ ensure('macos/Runner/Release.entitlements', [
 ])
 PY
 
+# Android : le template Flutter ne déclare android.permission.INTERNET que dans
+# les manifests debug/profile. En release, l'APK généré n'a alors AUCUN droit
+# réseau -> connect() échoue en « SocketException: Operation not permitted,
+# errno=1 ». On garantit la permission dans le manifest principal (idempotent).
+python3 - <<'PY'
+import pathlib, re
+MANIFEST = pathlib.Path('android/app/src/main/AndroidManifest.xml')
+if MANIFEST.exists():
+    src = MANIFEST.read_text()
+    if 'android.permission.INTERNET' not in src:
+        marker = '<application'
+        add = ('<uses-permission android:name="android.permission.INTERNET" />\n'
+               '    <application')
+        if marker in src:
+            MANIFEST.write_text(src.replace(marker, add, 1))
+            print('[bootstrap] android main manifest : + android.permission.INTERNET')
+        else:
+            print('[bootstrap] manifest Android : nœud <application> introuvable (vu tel quel)')
+    else:
+        print('[bootstrap] android main manifest : INTERNET déjà présent')
+else:
+    print('[bootstrap] manifest Android absent (plateforme non générée — ignoré)')
+PY
+
 echo "[bootstrap] flutter pub get…"
 flutter pub get
 
