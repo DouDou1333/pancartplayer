@@ -5,7 +5,7 @@ library;
 import 'dart:io' show SocketException;
 
 import 'package:flutter/foundation.dart'
-    show kIsWeb, defaultTargetPlatform, TargetPlatform;
+    show defaultTargetPlatform, TargetPlatform;
 
 import 'models.dart';
 import 'storage.dart';
@@ -13,7 +13,6 @@ import 'remote_client.dart';
 import 'local_engine.dart';
 import 'catalog.dart';
 import 'engine_support.dart';
-import 'ollama_detector.dart';
 
 class ChatService {
   ChatService(this._store);
@@ -167,33 +166,33 @@ class ChatService {
     return 'Erreur : $short';
   }
 
-  /// Message d'erreur final. Sur Android, si un fournisseur pointe vers
-  /// localhost (IP du téléphone, pas du PC), essaie de l'auto-réparer.
+/// Message d'erreur final. Sur mobile, un fournisseur `localhost` est
+  /// absurde (localhost = l'appareil) : on guide vers une configuration
+  /// correcte au lieu de scanner le réseau.
   Future<String> _errorMessage(Object e, AiProvider? provider) async {
-    final short = _short(e);
-    final isConnectionError = e is SocketException ||
-        (e.toString().contains('DioException') &&
-            e.toString().toLowerCase().contains('connection'));
+  final short = _short(e);
+  final isConnectionError = e is SocketException ||
+      (e.toString().contains('DioException') &&
+          e.toString().toLowerCase().contains('connection'));
 
-    if (isConnectionError &&
-        provider != null &&
-        _isLocalhostUrl(provider.baseUrl) &&
-        !kIsWeb &&
-        defaultTargetPlatform == TargetPlatform.android) {
-      final found = await detectOllamaUrl();
-      if (found != null) {
-        provider.baseUrl = found;
-        await _store.saveProvider(provider);
-        return 'Ollama détecté automatiquement sur le réseau : fournisseur '
-            '« ${provider.name} » configuré sur $found. Renvoie ton message.';
-      }
-      return 'Aucun serveur Ollama trouvé sur ce réseau. Vérifie que le PC '
-          'et le téléphone sont sur le même Wi-Fi et qu\'Ollama écoute '
-          '(OLLAMA_HOST=0.0.0.0:11434). Détail : $short';
-    }
-
-    return _friendlyError(e);
+  if (isConnectionError &&
+      provider != null &&
+      _isLocalhostUrl(provider.baseUrl) &&
+      defaultTargetPlatform == TargetPlatform.android) {
+    return 'Sur un téléphone, « localhost » désigne le téléphone lui-même, '
+        'pas ton PC. Ajoute ton fournisseur dans l\'onglet « IA » avec ses '
+        'infos habituelles : URL de ton machine (ex. http://192.168.1.20:11434 '
+        'pour Ollama, ou l\'URL du Cloud), clé API, modèle. Détail : $short';
   }
+  if (isConnectionError &&
+      provider == null &&
+      defaultTargetPlatform == TargetPlatform.android) {
+    return 'Connexion impossible (fournisseur vide ou réseau). Ajoute un '
+        'fournisseur dans l\'onglet « IA » : URL, clé, modèle. Détail : $short';
+  }
+
+  return _friendlyError(e);
+}
 
   static bool _isLocalhostUrl(String s) {
     final u = Uri.tryParse(s);

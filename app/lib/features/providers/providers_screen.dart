@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_providers.dart';
 import '../../core/models.dart';
-import '../../core/ollama_detector.dart';
+import '../../core/provider_probe.dart';
 
 class ProvidersScreen extends ConsumerStatefulWidget {
   const ProvidersScreen({super.key});
@@ -162,7 +162,8 @@ class _ProviderDialogState extends ConsumerState<_ProviderDialog> {
   late final TextEditingController _key;
   late final TextEditingController _model;
   bool _isLocal = false;
-  bool _scanning = false;
+  bool _testing = false;
+  String? _testResult;
 
   @override
   void initState() {
@@ -194,26 +195,26 @@ class _ProviderDialogState extends ConsumerState<_ProviderDialog> {
     });
   }
 
-  Future<void> _scanOllama() async {
-    setState(() => _scanning = true);
+  Future<void> _testConnection() async {
+    final url = _baseUrl.text.trim();
+    if (url.isEmpty) return;
+    setState(() {
+      _testing = true;
+      _testResult = null;
+    });
     try {
-      final found = await detectOllamaUrl(timeout: const Duration(seconds: 8));
+      final r = await probeProviderUrl(url, apiKey: _key.text.trim());
       if (!mounted) return;
-      if (found != null) {
-        setState(() => _baseUrl.text = found);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Aucun serveur Ollama trouvé : PC et téléphone sur le même '
-              'Wi-Fi ? Ollama lancé (OLLAMA_HOST=0.0.0.0:11434) ?',
-            ),
-          ),
-        );
-      }
+      setState(() => _testResult = r.message);
     } finally {
-      if (mounted) setState(() => _scanning = false);
+      if (mounted) setState(() => _testing = false);
     }
+  }
+
+  static bool _isLocalhostUrl(String s) {
+    final u = Uri.tryParse(s.trim());
+    final host = u?.host.isEmpty == false ? u!.host : s.trim().toLowerCase();
+    return host == 'localhost' || host == '127.0.0.1';
   }
 
   Future<void> _save() async {
@@ -279,31 +280,39 @@ class _ProviderDialogState extends ConsumerState<_ProviderDialog> {
                   hintText: 'https://api.openai.com',
                 ),
               ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: _scanning
-                      ? const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                            SizedBox(width: 8),
-                            Text('Recherche d\'Ollama sur le Wi-Fi…',
-                                style: TextStyle(color: Colors.white54, fontSize: 12)),
-                          ],
-                        )
-                      : TextButton.icon(
-                          onPressed: _scanOllama,
-                          icon: const Icon(Icons.wifi_tethering, size: 16),
-                          label: const Text('Chercher automatiquement (Ollama)'),
-                        ),
-                ),
+              Row(
+                children: [
+                  if (_testing)
+                    const Text('Test en cours…',
+                        style: TextStyle(color: Colors.white54, fontSize: 12))
+                  else
+                    TextButton.icon(
+                      onPressed: _testConnection,
+                      icon: const Icon(Icons.network_check, size: 16),
+                      label: const Text('Tester la connexion'),
+                    ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _testResult ?? '',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: (_testResult ?? '').startsWith('Fournisseur joignable')
+                            ? const Color(0xFF5BD27B)
+                            : const Color(0xFFFFB04A),
+                      ),
+                    ),
+                  ),
+                ],
               ),
+              if (_isLocalhostUrl(_baseUrl.text))
+                const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Sur un téléphone, « localhost » désigne le téléphone lui-même : ce fournisseur ne joindra un Ollama du PC que sur ordinateur.',
+                    style: TextStyle(color: Colors.white38, fontSize: 11),
+                  ),
+                ),
               TextField(
                 controller: _key,
                 obscureText: true,
