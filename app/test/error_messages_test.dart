@@ -30,7 +30,7 @@ void main() {
       final msg = friendlyErrorString(
         'HttpException: Cleartext HTTP traffic to x not permitted',
       );
-      expect(msg, contains('cleartext') || contains('HTTP'));
+      expect(msg, anyOf(contains('cleartext'), contains('HTTP')));
     });
 
     test('erreur générique', () {
