@@ -93,11 +93,10 @@ void main() {
   });
 
   group('copyToClipboard', () {
-    test('échoue sans erreur si le presse-papiers est indisponible', () async {
-      // Dans un test unitaire sans binding widget ni mock de canal,
-      // Clipboard.setData lève MissingPluginException : on attend que la
-      // fonction absorbe l'erreur et renvoie false (jamais d'exception).
-      expect(await copyToClipboard('abc'), isFalse);
+    test('copie le texte dans le presse-papiers', () async {
+      // Avec TestWidgetsFlutterBinding initialisé, le canal presse-papiers est
+      // géré par défaut (succès) : on vérifie le chemin nominal sans crash.
+      expect(await copyToClipboard('abc'), isTrue);
     });
   });
 }
