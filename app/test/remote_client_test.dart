@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:pancartplayer/core/remote_client.dart';
@@ -50,6 +51,47 @@ void main() {
       final d = SseDecoder();
       final evs = d.add(utf8.encode(': ping\n\nid: 42\ndata: {"ok":true}\n\nevent: foo\n'));
       expect(evs, ['{"ok":true}']);
+    });
+  group('isRetryableForNonStream', () {
+    final opts = RequestOptions(path: 'http://exemple.local');
+
+    test('badResponse (4xx/5xx) -> ne pas relancer', () {
+      final e = DioException(
+        type: DioExceptionType.badResponse,
+        requestOptions: opts,
+        response: Response(requestOptions: opts, statusCode: 404),
+      );
+      expect(isRetryableForNonStream(e), isFalse);
+    });
+
+    test('cancel -> ne pas relancer', () {
+      final e = DioException(
+        type: DioExceptionType.cancel,
+        requestOptions: opts,
+      );
+      expect(isRetryableForNonStream(e), isFalse);
+    });
+
+    test('erreurs de transport -> relancer en non-streamé', () {
+      for (final t in [
+        DioExceptionType.connectionError,
+        DioExceptionType.connectionTimeout,
+        DioExceptionType.sendTimeout,
+        DioExceptionType.receiveTimeout,
+        DioExceptionType.unknown,
+      ]) {
+        expect(
+          isRetryableForNonStream(
+            DioException(type: t, requestOptions: opts),
+          ),
+          isTrue,
+          reason: 'type $t',
+        );
+      }
+    });
+
+    test('hors DioException -> relancer', () {
+      expect(isRetryableForNonStream(Exception('autre')), isTrue);
     });
   });
 }

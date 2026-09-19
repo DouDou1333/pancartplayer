@@ -1,6 +1,20 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:pancartplayer/core/error_messages.dart';
+
+DioException _dio404([Object? data]) {
+  final opts = RequestOptions(path: 'http://exemple.local/v1/chat/completions');
+  return DioException(
+    type: DioExceptionType.badResponse,
+    requestOptions: opts,
+    response: Response<dynamic>(
+      requestOptions: opts,
+      statusCode: 404,
+      data: data,
+    ),
+  );
+}
 
 void main() {
   group('friendlyErrorString', () {
@@ -36,6 +50,23 @@ void main() {
 
     test('erreur générique', () {
       expect(friendlyErrorString('boom'), 'Erreur : boom');
+    });
+
+    test('404 Ollama : modèle manquant -> conseille ollama pull', () {
+      final e = _dio404({
+        'error': "model 'llama3' not found, try pulling it first",
+      });
+      final msg = friendlyErrorString(e);
+      expect(msg, contains('ollama pull llama3'));
+      expect(msg, contains('qwen3:0.6b'));
+      expect(msg, isNot(contains('Erreur :')));
+    });
+
+    test('404 générique -> mauvaise adresse / endpoint', () {
+      final msg = friendlyErrorString(_dio404('not found'));
+      expect(msg, contains('404'));
+      expect(msg, contains('/v1'));
+      expect(msg, isNot(contains('Erreur :')));
     });
   });
 

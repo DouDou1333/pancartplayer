@@ -3,6 +3,8 @@
 /// chat (bubble d'erreur) — les autres écrans en font de même si besoin.
 library;
 
+import 'package:dio/dio.dart';
+
 /// Version tronquée à 160 caractères du détail d'une exception.
 String shortErrorMessage(Object e) {
   final s = e.toString().trim();
@@ -14,6 +16,20 @@ String friendlyErrorString(Object e) {
   final s = e.toString();
   final lower = s.toLowerCase();
   final short = shortErrorMessage(e);
+
+  final dio = e is DioException ? e : null;
+  if (dio != null && dio.response?.statusCode == 404) {
+    final model = _ollamaMissingModel(dio);
+    if (model.isNotEmpty) {
+      return 'Modèle « $model » introuvable sur Ollama — installe-le dans '
+          'Termux : « ollama pull $model » (ou remplace-le par un modèle déjà '
+          'installé, ex. qwen3:0.6b). Détail : $short';
+    }
+    return 'Réponse 404 (introuvable) — mauvaise adresse de base ou endpoint '
+        'absent. Vérifie l\'URL du fournisseur (ex. http://IP:11434 sans /v1, '
+        'le « /v1 » est ajouté automatiquement) et teste le service dans un '
+        'navigateur. Détail : $short';
+  }
 
   if (lower.contains('operation not permitted') || lower.contains('errno = 1')) {
     return 'Réseau bloqué par le système (macOS : sandbox « réseau client » ; '
@@ -34,6 +50,23 @@ String friendlyErrorString(Object e) {
         'dernière version de l\'app (cleartext LAN autorisé). Détail : $short';
   }
   return 'Erreur : $short';
+}
+
+/// Extrait le nom d'un modèle signalé manquant par Ollama (HTTP 404 avec
+/// corps `{"error": "model 'X' not found, try pulling it first"}`).
+String _ollamaMissingModel(DioException e) {
+  final data = e.response?.data;
+  String text;
+  if (data is Map) {
+    final err = data['error'];
+    text = err is String ? err : data.toString();
+  } else if (data is String) {
+    text = data;
+  } else {
+    return '';
+  }
+  final m = RegExp(r"model\s+['\"]([^'\"]+)['\"]\s+not found").firstMatch(text);
+  return m?.group(1) ?? '';
 }
 
 /// Vrai si l'URL pointe vers le device lui-même (`localhost`).

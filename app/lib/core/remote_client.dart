@@ -103,7 +103,8 @@ class RemoteClient {
         }
         if (decoder.isComplete) return;
       }
-    } on DioException catch (_) {
+    } on DioException catch (e) {
+      if (!isRetryableForNonStream(e)) rethrow;
       // Fallback non-stream (web notamment)
       final fallback = await reply(
         model: model,
@@ -114,6 +115,17 @@ class RemoteClient {
       yield fallback;
     }
   }
+}
+
+/// Vrai si un échec de flux mérite une relance en non-streamé (web).
+/// Les réponses HTTP réelles (4xx/5xx) ne sont pas des fautes du transport :
+/// on les remonte telles quelles au lieu de déclencher un second appel voué
+/// au même échec et qui masque le message d'erreur (ex. Ollama : modèle
+/// introuvable → 404).
+bool isRetryableForNonStream(Object e) {
+  if (e is! DioException) return true;
+  return e.type != DioExceptionType.badResponse &&
+      e.type != DioExceptionType.cancel;
 }
 
 /// Décodeur SSE robuste : tamponne les chunks réseau, découpe aux fins de
