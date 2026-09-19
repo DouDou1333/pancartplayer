@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_providers.dart';
 import '../../core/models.dart';
+import '../../core/ollama_launcher.dart';
 import '../../core/provider_probe.dart';
 
 class ProvidersScreen extends ConsumerStatefulWidget {
@@ -13,6 +14,85 @@ class ProvidersScreen extends ConsumerStatefulWidget {
 }
 
 class _ProvidersScreenState extends ConsumerState<ProvidersScreen> {
+  bool _starting = false;
+
+  AiProvider? _ollamaProvider(List<AiProvider> items) {
+    for (final p in items) {
+      if (isOllamaProvider(p)) return p;
+    }
+    return null;
+  }
+
+  Future<void> _startOllama(AiProvider p) async {
+    setState(() => _starting = true);
+    try {
+      final r = await startOllama(p);
+      if (!mounted) return;
+      await _showResult(r);
+    } finally {
+      if (mounted) setState(() => _starting = false);
+    }
+  }
+
+  Future<void> _showResult(OllamaStartResult r) async {
+    final okStatus = r.status != OllamaStartStatus.instructions;
+    var copied = false;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                okStatus ? Icons.bolt : Icons.info_outline,
+                color: okStatus
+                    ? const Color(0xFF5BD27B)
+                    : const Color(0xFF9A8CFF),
+              ),
+              const SizedBox(width: 8),
+              Text(okStatus ? 'Ollama' : 'Ollama à lancer'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SelectableText(r.message),
+                if (r.command != null) ...[
+                  const SizedBox(height: 12),
+                  SelectableText(
+                    r.command!,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            if (r.command != null)
+              TextButton.icon(
+                onPressed: () async {
+                  final ok = await copyToClipboard(r.command!);
+                  if (ctx.mounted) setDialogState(() => copied = ok);
+                },
+                icon: Icon(copied ? Icons.check : Icons.copy, size: 18),
+                label: Text(copied ? 'Copié ✓' : 'Copier la commande'),
+              ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _add() async {
     final ctrl = ref.read(providersProvider);
     final ok = await showDialog<bool>(
@@ -48,11 +128,24 @@ class _ProvidersScreenState extends ConsumerState<ProvidersScreen> {
   Widget build(BuildContext context) {
     final ctrl = ref.watch(providersProvider);
     final items = ctrl.items;
+    final ollama = _ollamaProvider(items);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Fournisseurs d\'IA'),
         actions: [
+          if (ollama != null)
+            IconButton(
+              tooltip: 'Démarrer Ollama',
+              icon: _starting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.bolt),
+              onPressed: _starting ? null : () => _startOllama(ollama),
+            ),
           IconButton(
             tooltip: 'Ajouter un fournisseur',
             icon: const Icon(Icons.add),
@@ -124,11 +217,24 @@ class _ProvidersScreenState extends ConsumerState<ProvidersScreen> {
                               await _edit(p);
                             } else if (c == 'delete') {
                               await ctrl.delete(p.id);
+                            } else if (c == 'start') {
+                              await _startOllama(p);
                             }
                           },
-                          itemBuilder: (_) => const [
-                            PopupMenuItem(value: 'edit', child: Text('Modifier')),
-                            PopupMenuItem(value: 'delete', child: Text('Supprimer')),
+                          itemBuilder: (_) => [
+                            if (isOllamaProvider(p))
+                              const PopupMenuItem(
+                                value: 'start',
+                                child: Text('Démarrer Ollama'),
+                              ),
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Text('Modifier'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Supprimer'),
+                            ),
                           ],
                         ),
                       ],

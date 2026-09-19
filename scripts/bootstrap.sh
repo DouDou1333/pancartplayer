@@ -106,7 +106,9 @@ PY
 # Android : le template Flutter ne déclare android.permission.INTERNET que dans
 # les manifests debug/profile. En release, l'APK généré n'a alors AUCUN droit
 # réseau -> connect() échoue en « SocketException: Operation not permitted,
-# errno=1 ». On garantit la permission dans le manifest principal (idempotent).
+# errno=1 ». On garantit la permission dans le manifest principal (idempotent)
+# ainsi que com.termux.permission.RUN_COMMAND (bouton « Démarrer Ollama »,
+# à accorder ensuite dans les Paramètres Android de l'app).
 python3 - <<'PY'
 import pathlib, re
 MANIFEST = pathlib.Path('android/app/src/main/AndroidManifest.xml')
@@ -119,10 +121,17 @@ else:
         added.append('INTERNET')
     if 'usesCleartextTraffic' not in src:
         added.append('usesCleartextTraffic')
+    if 'com.termux.permission.RUN_COMMAND' not in src:
+        added.append('RUN_COMMAND (Termux)')
     if 'android.permission.INTERNET' not in src:
         src = src.replace(
             '<application',
             '<uses-permission android:name="android.permission.INTERNET" />\n    <application',
+            1)
+    if 'com.termux.permission.RUN_COMMAND' not in src:
+        src = src.replace(
+            '<application',
+            '<uses-permission android:name="com.termux.permission.RUN_COMMAND" />\n    <application',
             1)
     if 'usesCleartextTraffic' not in src:
         src = re.sub(
