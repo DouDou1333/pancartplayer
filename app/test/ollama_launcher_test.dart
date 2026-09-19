@@ -2,10 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:pancartplayer/core/models.dart';
 import 'package:pancartplayer/core/ollama_launcher.dart';
 
 void main() {
-  TestDefaultBinaryMessengerBinding.ensureInitialized();
+  TestWidgetsFlutterBinding.ensureInitialized();
 
   group('commandes', () {
     test('la commande locale lance ollama sur 127.0.0.1:11434', () {

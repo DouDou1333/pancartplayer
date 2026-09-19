@@ -14,7 +14,7 @@ library;
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
-import 'package:android_intent_plus/android_intent_plus.dart';
+import 'package:android_intent_plus/android_intent.dart';
 
 import 'error_messages.dart' show isLocalhostBaseUrl;
 import 'models.dart' show AiProvider;
@@ -116,20 +116,20 @@ Future<OllamaStartResult> startOllama(AiProvider p) async {
       await Future<void>.delayed(const Duration(seconds: 6));
       final after = await probeProviderUrl(p.baseUrl, apiKey: p.apiKey);
       if (after.ok) {
-        return const OllamaStartResult(
+        return OllamaStartResult(
           OllamaStartStatus.started,
           'Ollama a démarré sur le téléphone ✓ — le fournisseur est joignable.',
           command: ollamaServeCommand(),
         );
       }
-      return const OllamaStartResult(
+      return OllamaStartResult(
         OllamaStartStatus.started,
         'Commande envoyée à Termux — Ollama est en train de démarrer.\n'
         'Réessaie la connexion dans quelques secondes.',
         command: ollamaServeCommand(),
       );
     }
-    return const OllamaStartResult(
+    return OllamaStartResult(
       OllamaStartStatus.instructions,
       'Impossible de lancer Termux depuis l\'app. Pour le permettre :\n'
       '⒈ Termux → « long-press » sur l\'écran → More → Help/Settings (ou '
@@ -144,14 +144,14 @@ Future<OllamaStartResult> startOllama(AiProvider p) async {
   }
 
   if (isLocalhostBaseUrl(p.baseUrl)) {
-    return const OllamaStartResult(
+    return OllamaStartResult(
       OllamaStartStatus.instructions,
       'Lance Ollama dans le terminal de cet appareil puis réessaie :',
       command: ollamaServeCommand(),
     );
   }
 
-  return const OllamaStartResult(
+  return OllamaStartResult(
     OllamaStartStatus.instructions,
     'Ollama n\'est pas joignable à cette adresse. Sur le PC où il tourne,\n'
     'lance la commande ci-dessous pour l\'exposer sur le Wi-Fi :',
