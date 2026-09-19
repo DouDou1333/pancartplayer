@@ -65,7 +65,8 @@ String _ollamaMissingModel(DioException e) {
   } else {
     return '';
   }
-  final m = RegExp(r"model\s+['\"]([^'\"]+)['\"]\s+not found").firstMatch(text);
+  final m =
+      RegExp("model\\s+['\"]([^'\"]+)['\"]\\s+not found").firstMatch(text);
   return m?.group(1) ?? '';
 }
 

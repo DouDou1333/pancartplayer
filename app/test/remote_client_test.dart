@@ -52,6 +52,8 @@ void main() {
       final evs = d.add(utf8.encode(': ping\n\nid: 42\ndata: {"ok":true}\n\nevent: foo\n'));
       expect(evs, ['{"ok":true}']);
     });
+  });
+
   group('isRetryableForNonStream', () {
     final opts = RequestOptions(path: 'http://exemple.local');
 
