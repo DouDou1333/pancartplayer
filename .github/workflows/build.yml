@@ -34,28 +34,28 @@ jobs:
         run: |
           cd app
           flutter build apk --release
-          mkdir -p ../android
-          cp build/app/outputs/flutter-apk/app-release.apk ../android/pancartplayer.apk
+          mkdir -p ../launcher/android
+          cp build/app/outputs/flutter-apk/app-release.apk ../launcher/android/pancartplayer.apk
 
       - name: Build Web
         run: |
           cd app
           flutter build web --release
-          rm -rf ../web
-          mkdir -p ../web
-          cp -r build/web/* ../web/
+          rm -rf ../launcher/web
+          mkdir -p ../launcher/web
+          cp -r build/web/* ../launcher/web/
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: android/pancartplayer.apk
+          path: launcher/android/pancartplayer.apk
 
       - name: Upload Web
         uses: actions/upload-artifact@v4
         with:
           name: web
-          path: web/
+          path: launcher/web/
 
   linux:
     name: Linux
@@ -77,14 +77,14 @@ jobs:
         run: |
           cd app
           flutter build linux --release
-          rm -rf ../linux
-          mkdir -p ../linux
-          cp -r build/linux/x64/release/bundle/* ../linux/
+          rm -rf ../launcher/linux
+          mkdir -p ../launcher/linux
+          cp -r build/linux/x64/release/bundle/* ../launcher/linux/
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: linux
-          path: linux/
+          path: launcher/linux/
 
   macos-ios:
     name: macOS + iOS
@@ -102,26 +102,26 @@ jobs:
         run: |
           cd app
           flutter build macos --release
-          rm -rf ../macos
-          mkdir -p ../macos
-          cp -r build/macos/Build/Products/Release/* ../macos/
+          rm -rf ../launcher/macos
+          mkdir -p ../launcher/macos
+          cp -r build/macos/Build/Products/Release/* ../launcher/macos/
       - name: Build iOS (non signé)
         run: |
           cd app
           flutter build ios --release --no-codesign
-          rm -rf ../ios
-          mkdir -p ../ios
-          cp -r build/ios/iphoneos/*.app ../ios/
+          rm -rf ../launcher/ios
+          mkdir -p ../launcher/ios
+          cp -r build/ios/iphoneos/*.app ../launcher/ios/
       - name: Upload macOS
         uses: actions/upload-artifact@v4
         with:
           name: macos
-          path: macos/
+          path: launcher/macos/
       - name: Upload iOS
         uses: actions/upload-artifact@v4
         with:
           name: ios
-          path: ios/
+          path: launcher/ios/
 
   windows:
     name: Windows
@@ -141,11 +141,11 @@ jobs:
         run: |
           cd app
           flutter build windows --release
-          rm -rf ../windows
-          mkdir -p ../windows
-          cp -r build/windows/x64/runner/Release/* ../windows/
+          rm -rf ../launcher/windows
+          mkdir -p ../launcher/windows
+          cp -r build/windows/x64/runner/Release/* ../launcher/windows/
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: windows/
+          path: launcher/windows/
