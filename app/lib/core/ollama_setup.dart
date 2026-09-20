@@ -368,16 +368,16 @@ String ollamaDetectMessage(OllamaDetection d) {
       return 'Un service répond sur ${d.baseUrl ?? 'le port 11434'} '
           'mais ce n\'est pas l\'API d\'Ollama.';
     case OllamaDetectStatus.unreachable:
-      return 'Rien ne répond sur ${kOllamaLocalBaseUrl} — Ollama n\'est '
+      return 'Rien ne répond sur $kOllamaLocalBaseUrl — Ollama n\'est '
           'pas lancé.';
     case OllamaDetectStatus.timeout:
-      return 'Délai dépassé sur ${kOllamaLocalBaseUrl} — le serveur ne '
+      return 'Délai dépassé sur $kOllamaLocalBaseUrl — le serveur ne '
           'répond pas à temps.';
     case OllamaDetectStatus.cleartext:
       return 'HTTP local bloqué par le système. Utilise la dernière version '
           'de l\'app (cleartext LAN autorisé).';
     case OllamaDetectStatus.corsOrMixedContent:
-      return 'Impossible de joindre ${kOllamaLocalBaseUrl} depuis le '
+      return 'Impossible de joindre $kOllamaLocalBaseUrl depuis le '
           'navigateur (mixed-content ou CORS). Sers l\'app en http:// ou '
           'utilise l\'app mobile/bureau.';
   }

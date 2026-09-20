@@ -210,11 +210,11 @@ void main() {
     });
 
     test('message de détection OK lisible', () {
-      final d = OllamaDetection(
+      const d = OllamaDetection(
         status: OllamaDetectStatus.ok,
         baseUrl: 'http://127.0.0.1:11434',
         version: '0.31.1',
-        models: const ['qwen3:0.6b'],
+        models: ['qwen3:0.6b'],
       );
       expect(ollamaDetectMessage(d), contains('Ollama détecté'));
       expect(ollamaDetectMessage(d), contains('qwen3:0.6b'));

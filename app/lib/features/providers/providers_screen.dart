@@ -705,10 +705,10 @@ class _OllamaSetupDialogState extends ConsumerState<_OllamaSetupDialog> {
   List<Widget> _successSection(OllamaDetection det) {
     final chips = det.models
         .map(
-          (m) => ActionChip(
+          (m) => FilterChip(
             label: Text(m),
             selected: _modelCtrl.text.trim() == m,
-            onPressed: () => setState(() => _modelCtrl.text = m),
+            onSelected: (_) => setState(() => _modelCtrl.text = m),
           ),
         )
         .toList();
