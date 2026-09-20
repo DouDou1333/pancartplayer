@@ -121,9 +121,9 @@ Future<OllamaDetection> detectOllamaServer({
           models: models,
         );
       }
-      final openai = versionRes.status >= 200 && versionRes.status < 300
-          ? await _fetchModels(f, Uri.parse('$base/v1/models'))
-          : const <String>[];
+      // Pas la forme `/api/version` d'Ollama : on tente quand même
+      // `/v1/models` (une API OpenAI-compatible suffit à détecter).
+      final openai = await _fetchModels(f, Uri.parse('$base/v1/models'));
       if (openai.isNotEmpty) {
         return OllamaDetection(
           status: OllamaDetectStatus.ok,
@@ -133,8 +133,24 @@ Future<OllamaDetection> detectOllamaServer({
       }
       lastIssue ??= OllamaDetectStatus.notOllama;
     } on OllamaProbeError catch (e) {
+      final openai = await _fetchModels(f, Uri.parse('$base/v1/models'));
+      if (openai.isNotEmpty) {
+        return OllamaDetection(
+          status: OllamaDetectStatus.ok,
+          baseUrl: base,
+          models: openai,
+        );
+      }
       lastIssue ??= e.status;
     } on Object {
+      final openai = await _fetchModels(f, Uri.parse('$base/v1/models'));
+      if (openai.isNotEmpty) {
+        return OllamaDetection(
+          status: OllamaDetectStatus.ok,
+          baseUrl: base,
+          models: openai,
+        );
+      }
       lastIssue ??= OllamaDetectStatus.unreachable;
     }
   }
