@@ -30,6 +30,22 @@ String friendlyErrorString(Object e) {
         'le « /v1 » est ajouté automatiquement) et teste le service dans un '
         'navigateur. Détail : $short';
   }
+  if (dio != null && dio.response?.statusCode != null) {
+    final sc = dio.response!.statusCode!;
+    if (sc >= 300 && sc < 400) {
+      return 'Redirection HTTP ($sc) — le serveur renvoie vers une autre '
+          'adresse (souvent une URL de base inexacte ou http:// → https://). '
+          'Vérifie l\'adresse exacte du fournisseur (ex. http://IP:11434 pour '
+          'Ollama, https:// pour le Cloud). Détail : $short';
+    }
+    if (sc >= 400) {
+      final body = _errorBody(dio);
+      return 'Réponse HTTP $sc du serveur'
+          '${body.isEmpty ? '' : ' — $body'} (clé, modèle ou adresse à '
+          'vérifier). Utilise « ⚙ Configurer Ollama automatiquement » ou '
+          'corrige le fournisseur. Détail : $short';
+    }
+  }
 
   if (lower.contains('operation not permitted') || lower.contains('errno = 1')) {
     return 'Réseau bloqué par le système (macOS : sandbox « réseau client » ; '
@@ -68,6 +84,24 @@ String _ollamaMissingModel(DioException e) {
   final m =
       RegExp("model\\s+['\"]([^'\"]+)['\"]\\s+not found").firstMatch(text);
   return m?.group(1) ?? '';
+}
+
+/// Court extrait lisible du corps d'une réponse d'erreur (le champ `error`
+/// des API OpenAI-compatibles, ou le texte brut tronqué).
+String _errorBody(DioException e) {
+  final data = e.response?.data;
+  String text;
+  if (data is Map) {
+    final err = data['error'];
+    text = err is String ? err : '';
+  } else if (data is String) {
+    text = data;
+  } else {
+    text = '';
+  }
+  final t = text.trim().replaceAll('\n', ' ');
+  if (t.isEmpty) return '';
+  return t.length > 140 ? '${t.substring(0, 140)}…' : t;
 }
 
 /// Vrai si l'URL pointe vers le device lui-même (`localhost`).

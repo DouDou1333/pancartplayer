@@ -3,14 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:pancartplayer/core/error_messages.dart';
 
-DioException _dio404([Object? data]) {
+DioException _dioStatus(int statusCode, [Object? data]) {
   final opts = RequestOptions(path: 'http://exemple.local/v1/chat/completions');
   return DioException(
     type: DioExceptionType.badResponse,
     requestOptions: opts,
     response: Response<dynamic>(
       requestOptions: opts,
-      statusCode: 404,
+      statusCode: statusCode,
       data: data,
     ),
   );
@@ -53,7 +53,7 @@ void main() {
     });
 
     test('404 Ollama : modèle manquant -> conseille ollama pull', () {
-      final e = _dio404({
+      final e = _dioStatus(404, {
         'error': "model 'llama3' not found, try pulling it first",
       });
       final msg = friendlyErrorString(e);
@@ -63,9 +63,29 @@ void main() {
     });
 
     test('404 générique -> mauvaise adresse / endpoint', () {
-      final msg = friendlyErrorString(_dio404('not found'));
+      final msg = friendlyErrorString(_dioStatus(404, 'not found'));
       expect(msg, contains('404'));
       expect(msg, contains('/v1'));
+      expect(msg, isNot(contains('Erreur :')));
+    });
+
+    test('3xx -> redirection expliquée', () {
+      final msg = friendlyErrorString(_dioStatus(301, 'redirect'));
+      expect(msg, contains('Redirection HTTP (301)'));
+      expect(msg, contains('https://'));
+      expect(msg, isNot(contains('Erreur :')));
+    });
+
+    test('4xx -> « Réponse HTTP » avec corps du serveur', () {
+      final msg = friendlyErrorString(_dioStatus(403, {'error': 'Invalid key'}));
+      expect(msg, contains('Réponse HTTP 403'));
+      expect(msg, contains('Invalid key'));
+      expect(msg, isNot(contains('Erreur :')));
+    });
+
+    test('5xx -> « Réponse HTTP » même avec corps brut tronqué', () {
+      final msg = friendlyErrorString(_dioStatus(500, 'boom'));
+      expect(msg, contains('Réponse HTTP 500'));
       expect(msg, isNot(contains('Erreur :')));
     });
   });
