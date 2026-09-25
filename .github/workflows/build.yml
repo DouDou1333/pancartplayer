@@ -35,7 +35,9 @@ jobs:
           cd app
           flutter build apk --release
           mkdir -p ../android
-          cp build/app/outputs/flutter-apk/app-release.apk ../android/pancartplayer.apk
+          bash ../scripts/sign_apk.sh \
+            build/app/outputs/flutter-apk/app-release.apk \
+            ../android/pancartplayer.apk
 
       - name: Build Web
         run: |

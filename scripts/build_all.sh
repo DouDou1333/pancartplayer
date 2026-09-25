@@ -15,8 +15,10 @@ echo ">> Compilation en cours…"
 
 if flutter build apk --release >/dev/null 2>&1; then
   mkdir -p "$ROOT/launcher/android"
-  cp build/app/outputs/flutter-apk/app-release.apk "$ROOT/launcher/android/pancartplayer.apk"
-  echo "✓ launcher/android/pancartplayer.apk"
+  bash "$ROOT/scripts/sign_apk.sh" \
+    build/app/outputs/flutter-apk/app-release.apk \
+    "$ROOT/launcher/android/pancartplayer.apk" >/dev/null 2>&1
+  echo "✓ launcher/android/pancartplayer.apk (signé)"
 fi
 
 if flutter build web --release >/dev/null 2>&1; then
