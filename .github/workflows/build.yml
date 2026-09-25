@@ -33,7 +33,7 @@ jobs:
       - name: Build APK
         run: |
           cd app
-          flutter build apk --release
+          flutter build apk --release --target-platform android-arm64
           mkdir -p ../android
           bash ../scripts/sign_apk.sh \
             build/app/outputs/flutter-apk/app-release.apk \
