@@ -101,6 +101,18 @@ const List<CatalogModel> kCatalog = [
     recommendedFor: 'all',
     tags: ['code', 'raisonnement'],
   ),
+  CatalogModel(
+    id: 'zenith-v1-coding-uncensored',
+    name: 'Zenith V1 Coding uncensored',
+    owner: 'wethesheeple33',
+    repo: 'wethesheeple33/zenith-v1-coding-uncensored-Q3_K_M-GGUF',
+    file: 'zenith-v1-coding-uncensored-q3_k_m.gguf',
+    params: '3.8B',
+    quant: 'Q3_K_M',
+    sizeMb: 1962,
+    recommendedFor: 'all',
+    tags: ['code', 'uncensored'],
+  ),
 
   // ---- Desktop ----------------------------------------------------------
   CatalogModel(

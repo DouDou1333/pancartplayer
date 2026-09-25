@@ -27,6 +27,11 @@ void main() {
     test('gemma3-4b est exécutable en local', () {
       expect(catalogById('gemma3-4b')!.sizeMb, lessThanOrEqualTo(kLocalRamLimitMb));
     });
+
+    test('zenith-v1 est exécutable en local', () {
+      expect(catalogById('zenith-v1-coding-uncensored')!.sizeMb,
+          lessThanOrEqualTo(kLocalRamLimitMb));
+    });
   });
 
   group('catalogByIdOrCustom', () {
